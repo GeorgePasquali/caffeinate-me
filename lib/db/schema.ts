@@ -5,6 +5,10 @@ import {
   text,
   timestamp,
   integer,
+  boolean,
+  json,
+  decimal,
+  enum as pgEnum,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -68,6 +72,101 @@ export const invitations = pgTable('invitations', {
   status: varchar('status', { length: 20 }).notNull().default('pending'),
 });
 
+export const subscriptionTiers = pgTable('subscription_tiers', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 100 }).notNull(),
+  description: text('description'),
+  monthlyAmount: decimal('monthly_amount', { precision: 10, scale: 2 }).notNull(),
+  coffeeAmount: integer('coffee_amount').notNull(), // in grams
+  features: json('features').notNull(),
+  stripeProductId: text('stripe_product_id').unique(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const coffeePreferences = pgTable('coffee_preferences', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id),
+  grindType: varchar('grind_type', { length: 50 }),
+  roastLevel: varchar('roast_level', { length: 50 }),
+  originPreference: varchar('origin_preference', { length: 50 }),
+  blendPreference: varchar('blend_preference', { length: 50 }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const orders = pgTable('orders', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id),
+  subscriptionTierId: integer('subscription_tier_id')
+    .notNull()
+    .references(() => subscriptionTiers.id),
+  status: varchar('status', { length: 50 }).notNull(),
+  orderDate: timestamp('order_date').notNull().defaultNow(),
+  deliveryDate: timestamp('delivery_date'),
+  trackingNumber: varchar('tracking_number', { length: 100 }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const coffeeOrigins = pgTable('coffee_origins', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 100 }).notNull(),
+  country: varchar('country', { length: 100 }).notNull(),
+  region: varchar('region', { length: 100 }),
+  description: text('description'),
+  tastingNotes: json('tasting_notes'),
+  imageUrl: text('image_url'),
+  featured: boolean('featured').default(false),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const communityPosts = pgTable('community_posts', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id),
+  title: varchar('title', { length: 200 }).notNull(),
+  content: text('content').notNull(),
+  type: varchar('type', { length: 50 }).notNull(), // blog, guide, event
+  status: varchar('status', { length: 50 }).notNull().default('draft'),
+  publishedAt: timestamp('published_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const events = pgTable('events', {
+  id: serial('id').primaryKey(),
+  title: varchar('title', { length: 200 }).notNull(),
+  description: text('description').notNull(),
+  type: varchar('type', { length: 50 }).notNull(), // virtual, in-person
+  location: varchar('location', { length: 200 }),
+  startDate: timestamp('start_date').notNull(),
+  endDate: timestamp('end_date').notNull(),
+  maxParticipants: integer('max_participants'),
+  status: varchar('status', { length: 50 }).notNull().default('upcoming'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const eventRegistrations = pgTable('event_registrations', {
+  id: serial('id').primaryKey(),
+  eventId: integer('event_id')
+    .notNull()
+    .references(() => events.id),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id),
+  status: varchar('status', { length: 50 }).notNull().default('registered'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
 export const teamsRelations = relations(teams, ({ many }) => ({
   teamMembers: many(teamMembers),
   activityLogs: many(activityLogs),
@@ -112,6 +211,50 @@ export const activityLogsRelations = relations(activityLogs, ({ one }) => ({
   }),
 }));
 
+export const subscriptionTiersRelations = relations(subscriptionTiers, ({ many }) => ({
+  orders: many(orders),
+}));
+
+export const coffeePreferencesRelations = relations(coffeePreferences, ({ one }) => ({
+  user: one(users, {
+    fields: [coffeePreferences.userId],
+    references: [users.id],
+  }),
+}));
+
+export const ordersRelations = relations(orders, ({ one }) => ({
+  user: one(users, {
+    fields: [orders.userId],
+    references: [users.id],
+  }),
+  subscriptionTier: one(subscriptionTiers, {
+    fields: [orders.subscriptionTierId],
+    references: [subscriptionTiers.id],
+  }),
+}));
+
+export const communityPostsRelations = relations(communityPosts, ({ one }) => ({
+  user: one(users, {
+    fields: [communityPosts.userId],
+    references: [users.id],
+  }),
+}));
+
+export const eventsRelations = relations(events, ({ many }) => ({
+  registrations: many(eventRegistrations),
+}));
+
+export const eventRegistrationsRelations = relations(eventRegistrations, ({ one }) => ({
+  event: one(events, {
+    fields: [eventRegistrations.eventId],
+    references: [events.id],
+  }),
+  user: one(users, {
+    fields: [eventRegistrations.userId],
+    references: [users.id],
+  }),
+}));
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Team = typeof teams.$inferSelect;
@@ -140,3 +283,18 @@ export enum ActivityType {
   INVITE_TEAM_MEMBER = 'INVITE_TEAM_MEMBER',
   ACCEPT_INVITATION = 'ACCEPT_INVITATION',
 }
+
+export type SubscriptionTier = typeof subscriptionTiers.$inferSelect;
+export type NewSubscriptionTier = typeof subscriptionTiers.$inferInsert;
+export type CoffeePreference = typeof coffeePreferences.$inferSelect;
+export type NewCoffeePreference = typeof coffeePreferences.$inferInsert;
+export type Order = typeof orders.$inferSelect;
+export type NewOrder = typeof orders.$inferInsert;
+export type CoffeeOrigin = typeof coffeeOrigins.$inferSelect;
+export type NewCoffeeOrigin = typeof coffeeOrigins.$inferInsert;
+export type CommunityPost = typeof communityPosts.$inferSelect;
+export type NewCommunityPost = typeof communityPosts.$inferInsert;
+export type Event = typeof events.$inferSelect;
+export type NewEvent = typeof events.$inferInsert;
+export type EventRegistration = typeof eventRegistrations.$inferSelect;
+export type NewEventRegistration = typeof eventRegistrations.$inferInsert;

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { use, useState, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
-import { CircleIcon, Home, LogOut, Instagram, Youtube, MessageSquare, Coffee } from 'lucide-react';
+import { CircleIcon, Home, LogOut, Instagram, Youtube, MessageSquare, Coffee, Compass, Users, Package, Menu, X } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -79,18 +79,89 @@ function UserMenu() {
 }
 
 function Header() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   return (
     <header className="border-b border-gray-200 dark:border-gray-700">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-        <Link href="/" className="flex items-center">
-          <Coffee className="h-6 w-6 text-orange-500" />
-          <span className="ml-2 text-xl font-semibold text-gray-900 dark:text-gray-50"> Caffeinate</span>
-        </Link>
-        <div className="flex items-center space-x-4">
-          <Suspense fallback={<div className="h-9" />}>
-            <UserMenu />
-          </Suspense>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center space-x-8">
+            <Link href="/" className="flex items-center">
+              <Coffee className="h-6 w-6 text-orange-500" />
+              <span className="ml-2 text-xl font-semibold text-gray-900 dark:text-gray-50">Caffeinate</span>
+            </Link>
+            <nav className="hidden md:flex space-x-6">
+              <Link
+                href="/subscription"
+                className="text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100 flex items-center"
+              >
+                <Package className="h-4 w-4 mr-2" />
+                Subscription
+              </Link>
+              <Link
+                href="/origins"
+                className="text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100 flex items-center"
+              >
+                <Compass className="h-4 w-4 mr-2" />
+                Origins
+              </Link>
+              <Link
+                href="/community"
+                className="text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100 flex items-center"
+              >
+                <Users className="h-4 w-4 mr-2" />
+                Community
+              </Link>
+            </nav>
+          </div>
+          <div className="flex items-center space-x-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            >
+              {isMobileMenuOpen ? (
+                <X className="h-6 w-6" />
+              ) : (
+                <Menu className="h-6 w-6" />
+              )}
+            </Button>
+            <Suspense fallback={<div className="h-9" />}>
+              <UserMenu />
+            </Suspense>
+          </div>
         </div>
+
+        {/* Mobile Navigation Menu */}
+        {isMobileMenuOpen && (
+          <nav className="md:hidden py-4 space-y-4">
+            <Link
+              href="/subscription"
+              className="block text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100 flex items-center"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              <Package className="h-4 w-4 mr-2" />
+              Subscription
+            </Link>
+            <Link
+              href="/origins"
+              className="block text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100 flex items-center"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              <Compass className="h-4 w-4 mr-2" />
+              Origins
+            </Link>
+            <Link
+              href="/community"
+              className="block text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100 flex items-center"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              <Users className="h-4 w-4 mr-2" />
+              Community
+            </Link>
+          </nav>
+        )}
       </div>
     </header>
   );
